@@ -154,12 +154,13 @@ const feather = featherIcons;
                     </h2>
                     <div
                         class="
-                            flex-col
                             text-sm text-gray-500
                             dark:text-gray-400
                             flex
                             items-center
-                            sm:flex-row sm:flex-wrap sm:mt-0 sm:space-x-2
+                            flex-row flex-wrap
+                            mt-0
+                            space-x-2
                         "
                     >
                         <div
@@ -279,7 +280,6 @@ const feather = featherIcons;
                                 <div
                                     class="
                                         shadow
-                                        overflow-hidden
                                         border-b border-gray-200
                                         dark:border-gray-800
                                         sm:rounded-lg
@@ -290,6 +290,7 @@ const feather = featherIcons;
                                             min-w-full
                                             divide-y divide-gray-200
                                             dark:divide-gray-800
+                                            overflow-x-auto
                                         "
                                     >
                                         <thead
@@ -416,7 +417,6 @@ const feather = featherIcons;
                                                     class="
                                                         px-6
                                                         py-4
-                                                        whitespace-nowrap
                                                         text-sm text-gray-500
                                                         dark:text-gray-400
                                                     "
@@ -426,7 +426,6 @@ const feather = featherIcons;
                                                     class="
                                                         px-6
                                                         py-4
-                                                        whitespace-nowrap
                                                         text-sm text-gray-500
                                                         dark:text-gray-400
                                                     "
@@ -436,7 +435,6 @@ const feather = featherIcons;
                                                     class="
                                                         px-6
                                                         py-4
-                                                        whitespace-nowrap
                                                         text-sm text-gray-500
                                                         dark:text-gray-400
                                                     "
@@ -450,7 +448,6 @@ const feather = featherIcons;
                                                     class="
                                                         px-6
                                                         py-4
-                                                        whitespace-nowrap
                                                         text-sm text-gray-500
                                                         dark:text-gray-400
                                                     "
@@ -465,7 +462,6 @@ const feather = featherIcons;
                                                         pl-2
                                                         pr-6
                                                         py-4
-                                                        whitespace-nowrap
                                                         text-sm
                                                     "
                                                     :class="{
