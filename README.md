@@ -1,9 +1,10 @@
 # Status Quotes
 A simple site to help me keep track of what status I'm currently using for Discord
 
+## Requirements
 This site requires an account on [HarperDB Cloud](https://harperdb.io/product/harperdb-cloud/) and [Auth0](https://auth0.com/).
 
-## Environment Variables
+### Environment Variables
 - `VITE_AUTH0_DOMAIN`: Your Auth0 domain
 - `VITE_AUTH0_CLIENT_ID`: Your Auth0 client ID (app)
 - `VITE_ADMIN_USERS`: A list of Auth0 identifiers (the `sub` attribute), separated by commas

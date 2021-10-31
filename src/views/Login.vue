@@ -77,5 +77,12 @@ watch(isAuthenticated, (newVal) =>
                 </button>
             </div>
         </div>
+
+        <div class="absolute bottom-7 left-7">
+            <span class="mt-2 text-grey-900 dark:text-gray-400 text-sm">
+                By using this site, you agree to the use of cookies for the sole
+                purpose of maintaining your login state.
+            </span>
+        </div>
     </div>
 </template>
