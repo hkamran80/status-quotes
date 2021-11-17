@@ -590,7 +590,7 @@ const feather = featherIcons;
                                 type="checkbox"
                                 class="flew-grow-0 inline-block"
                                 v-model="inUse"
-                                :disabled="notInUse"
+                                :disabled="notInUse || notUsed"
                             />
                         </div>
 
@@ -610,7 +610,7 @@ const feather = featherIcons;
                                 type="checkbox"
                                 class="flew-grow-0 inline-block"
                                 v-model="notInUse"
-                                :disabled="inUse"
+                                :disabled="inUse || used"
                             />
                         </div>
 
@@ -642,6 +642,8 @@ const feather = featherIcons;
                                 query = '';
                                 used = false;
                                 inUse = false;
+                                notInUse = false;
+                                notUsed = false;
                             "
                         >
                             Reset

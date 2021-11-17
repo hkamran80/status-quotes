@@ -14,7 +14,6 @@ async function harperRequest(body: any): Promise<any> {
 
     if (response.ok) {
         const json = response.json();
-        console.debug(json);
         return json;
     } else {
         return Promise.reject(response);
