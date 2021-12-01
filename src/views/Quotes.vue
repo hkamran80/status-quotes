@@ -7,6 +7,7 @@ import featherIcons from "feather-icons";
 
 import { AuthStateModel } from "../utils/useAuth0";
 import { addQuote, getQuotes, switchInUseQuote } from "../utils/database";
+import { theme } from "../utils/theming";
 import { Quote } from "../models/quotes";
 
 const { push } = useRouter();
@@ -223,9 +224,8 @@ const feather = featherIcons;
                                 hover:bg-gray-50
                                 dark:hover:bg-gray-800
                                 focus:outline-none focus:ring-2
-                                ring-pink-700
-                                dark:ring-pink-500
                             "
+                            :class="[theme.RING, theme.DARK_RING]"
                             @click="filterModal = true"
                         >
                             Filter
@@ -246,14 +246,16 @@ const feather = featherIcons;
                                 text-sm
                                 font-medium
                                 text-white
-                                bg-pink-700
-                                dark:bg-pink-500
-                                hover:bg-pink-600
-                                dark:hover:bg-pink-600
                                 focus:outline-none focus:ring-2
-                                ring-pink-700
-                                dark:ring-pink-500
                             "
+                            :class="[
+                                theme.BG,
+                                theme.DARK_BG,
+                                theme.HOVER_BG,
+                                theme.DARK_HOVER_BG,
+                                theme.RING,
+                                theme.DARK_RING,
+                            ]"
                             @click="addModal = true"
                         >
                             Add
@@ -566,9 +568,8 @@ const feather = featherIcons;
                                     bg-gray-900
                                     rounded-md
                                     focus:outline-none focus:ring-2
-                                    ring-pink-700
-                                    dark:ring-pink-500
                                 "
+                                :class="[theme.RING, theme.DARK_RING]"
                                 placeholder="Query..."
                                 v-model="query"
                             />
@@ -630,14 +631,16 @@ const feather = featherIcons;
                                 text-sm
                                 font-medium
                                 text-white
-                                bg-pink-700
-                                dark:bg-pink-500
-                                hover:bg-pink-600
-                                dark:hover:bg-pink-600
                                 focus:outline-none focus:ring-2
-                                ring-pink-700
-                                dark:ring-pink-500
                             "
+                            :class="[
+                                theme.BG,
+                                theme.DARK_BG,
+                                theme.HOVER_BG,
+                                theme.DARK_HOVER_BG,
+                                theme.RING,
+                                theme.DARK_RING,
+                            ]"
                             @click="
                                 query = '';
                                 used = false;
@@ -701,9 +704,8 @@ const feather = featherIcons;
                                     bg-gray-900
                                     rounded-md
                                     focus:outline-none focus:ring-2
-                                    ring-pink-700
-                                    dark:ring-pink-500
                                 "
+                                :class="[theme.RING, theme.DARK_RING]"
                                 placeholder="Quote..."
                                 v-model="addModalQuote.quote"
                             />
@@ -719,9 +721,8 @@ const feather = featherIcons;
                                     bg-gray-900
                                     rounded-md
                                     focus:outline-none focus:ring-2
-                                    ring-pink-700
-                                    dark:ring-pink-500
                                 "
+                                :class="[theme.RING, theme.DARK_RING]"
                                 placeholder="Quotee..."
                                 v-model="addModalQuote.quotee"
                             />
@@ -737,9 +738,8 @@ const feather = featherIcons;
                                     bg-gray-900
                                     rounded-md
                                     focus:outline-none focus:ring-2
-                                    ring-pink-700
-                                    dark:ring-pink-500
                                 "
+                                :class="[theme.RING, theme.DARK_RING]"
                                 placeholder="Media..."
                                 v-model="addModalQuote.media"
                             />
@@ -761,14 +761,16 @@ const feather = featherIcons;
                                 text-sm
                                 font-medium
                                 text-white
-                                bg-pink-700
-                                dark:bg-pink-500
-                                hover:bg-pink-600
-                                dark:hover:bg-pink-600
                                 focus:outline-none focus:ring-2
-                                ring-pink-700
-                                dark:ring-pink-500
                             "
+                            :class="[
+                                theme.BG,
+                                theme.DARK_BG,
+                                theme.HOVER_BG,
+                                theme.DARK_HOVER_BG,
+                                theme.RING,
+                                theme.DARK_RING,
+                            ]"
                             @click="addQuoteAction"
                             v-if="
                                 addModalQuote.quote.trim() !== '' &&

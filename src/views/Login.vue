@@ -3,7 +3,9 @@ import { watch } from "@vue/runtime-core";
 import { useTitle } from "@vueuse/core";
 import { toRef } from "vue";
 import { useRouter } from "vue-router";
+
 import { AuthStateModel } from "../utils/useAuth0";
+import { theme } from "../utils/theming";
 
 const { push } = useRouter();
 const emit = defineEmits<{ (e: "login"): void }>();
@@ -43,6 +45,7 @@ watch(isAuthenticated, (newVal) =>
                 class="
                     bg-white
                     dark:bg-gray-900
+                    text-center
                     py-8
                     px-4
                     shadow
@@ -63,14 +66,16 @@ watch(isAuthenticated, (newVal) =>
                         text-sm
                         font-medium
                         text-white
-                        bg-pink-700
-                        dark:bg-pink-500
-                        hover:bg-pink-600
-                        dark:hover:bg-pink-600
                         focus:outline-none focus:ring-2 focus:ring-offset-2
-                        ring-pink-700
-                        dark:ring-pink-500
                     "
+                    :class="[
+                        theme.BG,
+                        theme.DARK_BG,
+                        theme.HOVER_BG,
+                        theme.DARK_HOVER_BG,
+                        theme.RING,
+                        theme.DARK_RING,
+                    ]"
                     @click.prevent="emit('login')"
                 >
                     Sign in
