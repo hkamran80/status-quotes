@@ -4,6 +4,7 @@ const headers = new Headers();
 headers.append("Content-Type", "application/json");
 headers.append("Authorization", `Basic ${import.meta.env.VITE_HARPERDB_TOKEN}`);
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 async function harperRequest(body: any): Promise<any> {
     const response = await fetch(import.meta.env.VITE_HARPERDB_HOST as string, {
         method: "POST",
@@ -49,7 +50,7 @@ export async function getQuotes(): Promise<Quote[] | null> {
 }
 
 export function switchInUseQuote(quoteId: number, inUseQuoteId?: number) {
-    let records = [{ id: quoteId, used: true, inUse: true }];
+    const records = [{ id: quoteId, used: true, inUse: true }];
     if (inUseQuoteId) {
         records.push({ id: inUseQuoteId, used: true, inUse: false });
     }

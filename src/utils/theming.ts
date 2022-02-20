@@ -1,14 +1,14 @@
 const baseLightName = (import.meta.env.VITE_COLOR_BASE_LIGHT as string).split(
-    "-"
+    "-",
 )[0];
 const baseLightNumber = Number(
-    (import.meta.env.VITE_COLOR_BASE_LIGHT as string).split("-")[1]
+    (import.meta.env.VITE_COLOR_BASE_LIGHT as string).split("-")[1],
 );
 const baseDarkName = (import.meta.env.VITE_COLOR_BASE_DARK as string).split(
-    "-"
+    "-",
 )[0];
 const baseDarkNumber = Number(
-    (import.meta.env.VITE_COLOR_BASE_DARK as string).split("-")[1]
+    (import.meta.env.VITE_COLOR_BASE_DARK as string).split("-")[1],
 );
 
 export const theme = {

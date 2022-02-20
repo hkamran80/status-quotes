@@ -1,20 +1,36 @@
 <script setup lang="ts">
-import { ref } from "vue";
+/* eslint-disable vue/no-v-html */
+import { onBeforeMount, ref } from "vue";
 import { computed } from "@vue/reactivity";
-import { useTitle } from "@vueuse/core";
+import { useTitle, useToggle } from "@vueuse/core";
 import { useRouter } from "vue-router";
-import featherIcons from "feather-icons";
-
+import feather from "feather-icons";
+import useHotkey, { HotKey } from "vue3-hotkey";
 import { AuthStateModel } from "../utils/useAuth0";
 import { addQuote, getQuotes, switchInUseQuote } from "../utils/database";
 import { theme } from "../utils/theming";
-import { Quote } from "../models/quotes";
+import { isDark } from "../composables/dark";
+import type { Quote } from "../models/quotes";
+
+import QuoteCard from "../components/QuoteCard.vue";
+import {
+    TransitionRoot,
+    TransitionChild,
+    Dialog,
+    DialogOverlay,
+    DialogTitle,
+    Combobox,
+    ComboboxInput,
+    ComboboxOptions,
+    ComboboxOption,
+} from "@headlessui/vue";
 
 const { push } = useRouter();
 const props = defineProps<{ authState: AuthStateModel }>();
 const emit = defineEmits<{ (e: "logout"): void }>();
 
 useTitle("Status Quotes");
+const toggleDark = useToggle(isDark);
 
 if (!props.authState.isAuthenticated) {
     push({ name: "Login" });
@@ -26,13 +42,16 @@ const adminUser = props.authState.isAuthenticated
           .indexOf(props.authState.user.sub) !== -1
     : false;
 
-const updateQuotes = () =>
-    getQuotes()
-        .then((quotesList) => {
-            quotes.value = quotesList as Quote[];
-            addModalQuote.value.id = quotes.value.length;
-        })
-        .catch(console.error);
+const updateQuotes = async () => {
+    try {
+        const quotesList = await getQuotes();
+
+        quotes.value = quotesList as Quote[];
+        addModalQuote.value.id = quotes.value.length;
+    } catch (error) {
+        console.error(error);
+    }
+};
 
 const query = ref<string>("");
 const used = ref<boolean>(false);
@@ -40,7 +59,6 @@ const inUse = ref<boolean>(false);
 const notUsed = ref<boolean>(false);
 const notInUse = ref<boolean>(false);
 let quotes = ref<Quote[]>([]);
-updateQuotes();
 
 const filteredQuotes = computed(() => {
     let values = quotes.value.sort((a, b) => a.id - b.id);
@@ -54,7 +72,7 @@ const filteredQuotes = computed(() => {
                     .toLowerCase()
                     .indexOf(query.value.toLowerCase()) !== -1 ||
                 quote.media.toLowerCase().indexOf(query.value.toLowerCase()) !==
-                    -1
+                    -1,
         );
     }
 
@@ -78,13 +96,9 @@ const filteredQuotes = computed(() => {
 });
 
 const filterModal = ref<boolean>(false);
-const filterModalClickAway = () =>
-    filterModal.value ? (filterModal.value = false) : null;
 
-const editModal = ref<boolean>(false);
-const editModalQuote = ref<Quote | null>(null);
-const editModalClickAway = () =>
-    editModal.value ? (editModal.value = false) : null;
+// const editModal = ref<boolean>(false);
+// const editModalQuote = ref<Quote | null>(null);
 
 const addModal = ref<boolean>(false);
 const addModalQuote = ref<Quote>({
@@ -95,12 +109,9 @@ const addModalQuote = ref<Quote>({
     used: false,
     inUse: false,
 } as Quote);
-const addModalClickAway = () =>
-    addModal.value ? (addModal.value = false) : null;
-
-const addQuoteAction = () => {
+const addQuoteAction = async () => {
     addQuote(addModalQuote.value);
-    updateQuotes();
+    await updateQuotes();
 
     addModal.value = false;
     addModalQuote.value = {
@@ -113,7 +124,7 @@ const addQuoteAction = () => {
     };
 };
 
-const markInUse = (quote: Quote) => {
+const markInUse = async (quote: Quote) => {
     const inUseQuote = quotes.value.find((quote) => quote.inUse === true);
     if (inUseQuote) {
         switchInUseQuote(quote.id, inUseQuote.id);
@@ -122,667 +133,631 @@ const markInUse = (quote: Quote) => {
     }
 
     navigator.clipboard.writeText(quote.quote);
-    updateQuotes();
+    await updateQuotes();
 };
 
-const feather = featherIcons;
+// Hotkeys
+const hotkeys = ref<HotKey[]>([
+    {
+        keys: ["/"],
+        preventDefault: false,
+        handler() {
+            if (
+                document.activeElement?.tagName.toLowerCase().trim() !== "input"
+            ) {
+                filterModal.value = true;
+            }
+        },
+    },
+    {
+        keys: ["shift", "space"],
+        preventDefault: true,
+        handler() {
+            addModal.value = true;
+        },
+    },
+    {
+        keys: ["="],
+        preventDefault: false,
+        handler() {
+            if (
+                document.activeElement?.tagName.toLowerCase().trim() !== "input"
+            ) {
+                toggleDark();
+            }
+        },
+    },
+]);
+useHotkey(hotkeys.value);
+
+// Autocompletion
+const quotees = computed(() =>
+    Array.from(new Set(quotes.value.map((quote) => quote.quotee))),
+);
+const quoteeSearch = computed(() =>
+    addModalQuote.value.quotee === ""
+        ? quotees.value
+        : quotees.value.filter((quotee) =>
+              quotee
+                  .toLowerCase()
+                  .includes(addModalQuote.value.quotee.toLowerCase()),
+          ),
+);
+
+const mediaValues = computed(() =>
+    Array.from(new Set(quotes.value.map((quote) => quote.media))),
+);
+const mediaSearch = computed(() =>
+    addModalQuote.value.media === ""
+        ? mediaValues.value
+        : mediaValues.value.filter((media) =>
+              media
+                  .toLowerCase()
+                  .includes(addModalQuote.value.media.toLowerCase()),
+          ),
+);
+
+onBeforeMount(async () => await updateQuotes());
 </script>
 
 <template>
-    <div class="py-10">
+    <div class="py-8 sm:py-10 sm:px-6 lg:px-8">
         <header>
-            <div
-                class="
-                    max-w-7xl
-                    mx-auto
-                    px-4
-                    sm:px-6
-                    lg:px-8 lg:flex lg:items-center lg:justify-between
-                "
-            >
-                <div class="flex-1 min-w-0">
+            <div class="max-w-7xl mx-auto flex items-center justify-between">
+                <div class="flex-1 flex flex-col">
                     <h2
-                        class="
-                            text-2xl
-                            font-bold
-                            leading-7
-                            text-gray-900
-                            dark:text-white
-                            sm:text-3xl sm:truncate
-                        "
+                        class="text-3xl font-bold leading-7 text-gray-900 dark:text-white sm:truncate mb-0.5"
                     >
                         Status Quotes
                     </h2>
                     <div
-                        class="
-                            text-sm text-gray-500
-                            dark:text-gray-400
-                            flex
-                            items-center
-                            flex-row flex-wrap
-                            mt-0
-                            space-x-2
-                        "
+                        class="text-sm text-gray-500 dark:text-gray-400 flex items-start sm:items-center flex-col sm:flex-row flex-wrap mt-0 sm:space-x-2"
                     >
                         <div
-                            class="mt-2 flex items-center"
+                            class="mt-3 sm:mt-2 flex"
                             v-text="
                                 `${
                                     quotes.filter((quote) => quote.used).length
                                 } used`
                             "
-                        ></div>
+                        />
 
-                        <span
-                            class="mt-2 flex items-center"
-                            v-text="`•`"
-                        ></span>
+                        <span class="mt-2 hidden sm:flex" v-text="`•`" />
 
                         <div
-                            class="mt-2 flex items-center"
+                            class="mt-0.5 sm:mt-2 flex"
                             v-text="
                                 `${
                                     quotes.filter(
-                                        (quote) => !quote.used && !quote.inUse
+                                        (quote) => !quote.used && !quote.inUse,
                                     ).length
                                 } unused`
                             "
-                        ></div>
+                        />
 
                         <span
-                            class="mt-2 flex items-center"
-                            v-text="`•`"
                             v-if="filteredQuotes.length < quotes.length"
-                        ></span>
+                            class="mt-2 hidden sm:flex"
+                            v-text="`•`"
+                        />
 
                         <div
-                            class="mt-2 flex items-center"
-                            v-text="`${filteredQuotes.length} filtered`"
                             v-if="filteredQuotes.length < quotes.length"
-                        ></div>
+                            class="mt-0.5 sm:mt-2 flex"
+                            v-text="`${filteredQuotes.length} filtered`"
+                        />
                     </div>
                 </div>
-                <div class="mt-5 flex lg:mt-0 lg:ml-4">
-                    <span class="ml-3">
-                        <button
-                            type="button"
-                            class="
-                                inline-flex
-                                items-center
-                                px-4
-                                py-2
-                                border border-gray-300
-                                dark:border-gray-700
-                                rounded-md
-                                shadow-sm
-                                text-sm
-                                font-medium
-                                text-gray-700
-                                dark:text-gray-300
-                                bg-white
-                                dark:bg-gray-900
-                                hover:bg-gray-50
-                                dark:hover:bg-gray-800
-                                focus:outline-none focus:ring-2
-                            "
-                            :class="[theme.RING, theme.DARK_RING]"
-                            @click="filterModal = true"
-                        >
-                            Filter
-                        </button>
-                    </span>
 
-                    <span class="sm:ml-3">
-                        <button
-                            type="button"
-                            class="
-                                inline-flex
-                                items-center
-                                px-4
-                                py-2
-                                border border-transparent
-                                rounded-md
-                                shadow-sm
-                                text-sm
-                                font-medium
-                                text-white
-                                focus:outline-none focus:ring-2
-                            "
-                            :class="[
-                                theme.BG,
-                                theme.DARK_BG,
-                                theme.HOVER_BG,
-                                theme.DARK_HOVER_BG,
-                                theme.RING,
-                                theme.DARK_RING,
-                            ]"
-                            @click="addModal = true"
-                        >
-                            Add
-                        </button>
-                    </span>
+                <div
+                    class="flex flex-col sm:flex-row space-y-3 sm:space-y-0 sm:space-x-3"
+                >
+                    <button
+                        type="button"
+                        class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-900 hover:bg-gray-50 dark:hover:bg-gray-800 focus:outline-none focus:ring-2"
+                        :class="[theme.RING, theme.DARK_RING]"
+                        @click="filterModal = true"
+                    >
+                        Filter
+                    </button>
+
+                    <button
+                        type="button"
+                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2"
+                        :class="[
+                            theme.BG,
+                            theme.DARK_BG,
+                            theme.HOVER_BG,
+                            theme.DARK_HOVER_BG,
+                            theme.RING,
+                            theme.DARK_RING,
+                        ]"
+                        @click="addModal = true"
+                    >
+                        Add
+                    </button>
                 </div>
             </div>
         </header>
         <main>
-            <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-                <div class="px-4 py-8 sm:px-0">
-                    <div class="flex flex-col max-w-7xl">
-                        <div class="-my-2 sm:-mx-6 lg:-mx-8">
-                            <div
-                                class="
-                                    py-2
-                                    align-middle
-                                    inline-block
-                                    min-w-full
-                                    sm:px-6
-                                    lg:px-8
-                                "
+            <div class="mt-10 grid grid-cols-1 md:grid-cols-4 gap-6">
+                <QuoteCard
+                    v-for="quote in filteredQuotes"
+                    :key="quote.id"
+                    :quote="quote"
+                    :class="[
+                        !quote.used && adminUser ? 'hover:cursor-pointer' : '',
+                        !quote.used
+                            ? 'hover:ring ring-gray-100 dark:ring-gray-800'
+                            : '',
+                        quote.inUse ? 'ring' : '',
+                        quote.inUse ? theme.RING : '',
+                        quote.inUse ? theme.DARK_RING : '',
+                    ]"
+                    :title="!quote.used ? 'Click to copy' : null"
+                    @click="!quote.used && adminUser ? markInUse(quote) : null"
+                />
+            </div>
+
+            <div class="mt-10 flex justify-center space-x-4">
+                <button
+                    type="button"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2"
+                    :class="[
+                        theme.BG,
+                        theme.DARK_BG,
+                        theme.HOVER_BG,
+                        theme.DARK_HOVER_BG,
+                        theme.RING,
+                        theme.DARK_RING,
+                    ]"
+                    @click="addModal = true"
+                >
+                    Add Quote
+                </button>
+
+                <button
+                    type="button"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2"
+                    :class="[
+                        theme.BG,
+                        theme.DARK_BG,
+                        theme.HOVER_BG,
+                        theme.DARK_HOVER_BG,
+                        theme.RING,
+                        theme.DARK_RING,
+                    ]"
+                    @click="() => toggleDark()"
+                >
+                    Switch Theme
+                </button>
+
+                <button
+                    type="button"
+                    class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 ring-red-600"
+                    @click="emit('logout')"
+                >
+                    Logout
+                </button>
+            </div>
+
+            <TransitionRoot appear :show="filterModal" as="template">
+                <Dialog as="div" @close="filterModal = false">
+                    <div
+                        class="fixed inset-0 z-10 overflow-y-auto bg-black bg-opacity-60"
+                    >
+                        <div class="min-h-screen px-4 text-center">
+                            <TransitionChild
+                                as="template"
+                                enter="duration-300 ease-out"
+                                enter-from="opacity-0"
+                                enter-to="opacity-100"
+                                leave="duration-200 ease-in"
+                                leave-from="opacity-100"
+                                leave-to="opacity-0"
+                            >
+                                <DialogOverlay class="fixed inset-0" />
+                            </TransitionChild>
+
+                            <span
+                                class="inline-block h-screen align-middle"
+                                aria-hidden="true"
+                            >
+                                &#8203;
+                            </span>
+
+                            <TransitionChild
+                                as="template"
+                                enter="duration-300 ease-out"
+                                enter-from="opacity-0 scale-95"
+                                enter-to="opacity-100 scale-100"
+                                leave="duration-200 ease-in"
+                                leave-from="opacity-100 scale-100"
+                                leave-to="opacity-0 scale-95"
                             >
                                 <div
-                                    class="
-                                        shadow
-                                        border-b border-gray-200
-                                        dark:border-gray-800
-                                        sm:rounded-lg
-                                    "
+                                    class="inline-block w-full max-w-md p-6 my-8 overflow-hidden text-left align-middle transition-all transform bg-white dark:bg-gray-900 shadow-xl rounded-lg"
                                 >
-                                    <table
-                                        class="
-                                            min-w-full
-                                            divide-y divide-gray-200
-                                            dark:divide-gray-800
-                                            overflow-x-auto
-                                        "
+                                    <DialogTitle
+                                        as="h3"
+                                        class="text-xl font-medium leading-6 text-gray-900 dark:text-gray-100 flex"
                                     >
-                                        <thead
-                                            class="bg-gray-50 dark:bg-gray-900"
-                                        >
-                                            <tr>
-                                                <th
-                                                    scope="col"
-                                                    class="
-                                                        px-6
-                                                        py-3
-                                                        text-left text-xs
-                                                        font-medium
-                                                        text-gray-500
-                                                        dark:text-gray-400
-                                                        uppercase
-                                                        tracking-wider
-                                                    "
-                                                >
-                                                    Quote
-                                                </th>
+                                        <span class="flex-1"> Filter </span>
+                                        <span
+                                            class="hover:cursor-pointer"
+                                            @click="filterModal = false"
+                                            v-html="feather.icons.x.toSvg()"
+                                        />
+                                    </DialogTitle>
+                                    <div
+                                        class="my-4 space-y-2 text-gray-500 dark:text-gray-400"
+                                    >
+                                        <div class="flex pt-1">
+                                            <input
+                                                v-model="query"
+                                                type="text"
+                                                class="w-full text-white p-2 bg-gray-100 dark:bg-gray-800 rounded-md focus:outline-none focus:ring-2 px-3"
+                                                :class="[
+                                                    theme.RING,
+                                                    theme.DARK_RING,
+                                                ]"
+                                                placeholder="Query..."
+                                            />
+                                        </div>
 
-                                                <th
-                                                    scope="col"
-                                                    class="
-                                                        px-6
-                                                        py-3
-                                                        text-left text-xs
-                                                        font-medium
-                                                        text-gray-500
-                                                        dark:text-gray-400
-                                                        uppercase
-                                                        tracking-wider
-                                                    "
-                                                >
-                                                    Quotee
-                                                </th>
-
-                                                <th
-                                                    scope="col"
-                                                    class="
-                                                        px-6
-                                                        py-3
-                                                        text-left text-xs
-                                                        font-medium
-                                                        text-gray-500
-                                                        dark:text-gray-400
-                                                        uppercase
-                                                        tracking-wider
-                                                    "
-                                                >
-                                                    Media
-                                                </th>
-
-                                                <th
-                                                    scope="col"
-                                                    class="
-                                                        px-6
-                                                        py-3
-                                                        text-left text-xs
-                                                        font-medium
-                                                        text-gray-500
-                                                        dark:text-gray-400
-                                                        uppercase
-                                                        tracking-wider
-                                                    "
-                                                >
+                                        <div class="space-y-2 px-3">
+                                            <div class="flex pt-1">
+                                                <span class="flex-grow">
                                                     Used
-                                                </th>
+                                                </span>
+                                                <input
+                                                    v-model="used"
+                                                    type="checkbox"
+                                                    class="flew-grow-0 inline-block"
+                                                    :disabled="notUsed"
+                                                />
+                                            </div>
 
-                                                <th
-                                                    scope="col"
-                                                    class="
-                                                        px-6
-                                                        py-3
-                                                        text-left text-xs
-                                                        font-medium
-                                                        text-gray-500
-                                                        dark:text-gray-400
-                                                        uppercase
-                                                        tracking-wider
-                                                    "
-                                                >
+                                            <div class="flex pt-1">
+                                                <span class="flex-grow">
                                                     In Use
-                                                </th>
+                                                </span>
+                                                <input
+                                                    v-model="inUse"
+                                                    type="checkbox"
+                                                    class="flew-grow-0 inline-block"
+                                                    :disabled="
+                                                        notInUse || notUsed
+                                                    "
+                                                />
+                                            </div>
 
-                                                <th
-                                                    scope="col"
-                                                    class="
-                                                        text-left text-xs
-                                                        font-medium
-                                                        text-gray-500
-                                                        dark:text-gray-400
-                                                        uppercase
-                                                        tracking-wider
-                                                    "
-                                                >
-                                                    Copy
-                                                </th>
-                                            </tr>
-                                        </thead>
+                                            <div class="flex pt-1">
+                                                <span class="flex-grow">
+                                                    Not Used
+                                                </span>
+                                                <input
+                                                    v-model="notUsed"
+                                                    type="checkbox"
+                                                    class="flew-grow-0 inline-block"
+                                                    :disabled="used"
+                                                />
+                                            </div>
 
-                                        <tbody x-max="2">
-                                            <tr
-                                                class="
-                                                    bg-white
-                                                    dark:bg-gray-900
-                                                "
-                                                v-for="quote in filteredQuotes"
-                                                :key="quote.quote"
-                                            >
-                                                <td
-                                                    class="
-                                                        px-6
-                                                        py-4
-                                                        text-sm
-                                                        font-medium
-                                                        text-gray-900
-                                                        dark:text-gray-300
-                                                    "
-                                                    v-text="quote.quote"
+                                            <div class="flex pt-1">
+                                                <span class="flex-grow">
+                                                    Not In Use
+                                                </span>
+                                                <input
+                                                    v-model="notInUse"
+                                                    type="checkbox"
+                                                    class="flew-grow-0 inline-block"
+                                                    :disabled="inUse || used"
                                                 />
-                                                <td
-                                                    class="
-                                                        px-6
-                                                        py-4
-                                                        text-sm text-gray-500
-                                                        dark:text-gray-400
-                                                    "
-                                                    v-text="quote.quotee"
-                                                />
-                                                <td
-                                                    class="
-                                                        px-6
-                                                        py-4
-                                                        text-sm text-gray-500
-                                                        dark:text-gray-400
-                                                    "
-                                                    v-text="quote.media"
-                                                />
-                                                <td
-                                                    class="
-                                                        px-6
-                                                        py-4
-                                                        text-sm text-gray-500
-                                                        dark:text-gray-400
-                                                    "
-                                                    v-html="
-                                                        quote.used
-                                                            ? feather.icons.check.toSvg()
-                                                            : feather.icons.x.toSvg()
-                                                    "
-                                                />
-                                                <td
-                                                    class="
-                                                        px-6
-                                                        py-4
-                                                        text-sm text-gray-500
-                                                        dark:text-gray-400
-                                                    "
-                                                    v-html="
-                                                        quote.inUse
-                                                            ? feather.icons.check.toSvg()
-                                                            : feather.icons.x.toSvg()
-                                                    "
-                                                />
-                                                <td
-                                                    class="
-                                                        pl-2
-                                                        pr-6
-                                                        py-4
-                                                        text-sm
-                                                    "
-                                                    :class="{
-                                                        'text-blue-500 hover:text-blue-400 dark:text-blue-400 dark:hover:text-blue-500 cursor-pointer':
-                                                            !quote.used &&
-                                                            adminUser,
-                                                        'text-gray-500 dark:text-gray-400':
-                                                            quote.used ||
-                                                            !adminUser,
-                                                    }"
-                                                    v-html="
-                                                        feather.icons.clipboard.toSvg()
-                                                    "
-                                                    @click="
-                                                        !quote.used && adminUser
-                                                            ? markInUse(quote)
-                                                            : null
-                                                    "
-                                                />
-                                            </tr>
-                                        </tbody>
-                                    </table>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <button
+                                            type="button"
+                                            class="w-full inline-flex justify-center px-4 py-2 text-sm text-white dark:text-black font-medium border border-transparent rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                                            :class="[
+                                                theme.BG,
+                                                theme.DARK_BG,
+                                                theme.HOVER_BG,
+                                                theme.DARK_HOVER_BG,
+                                                theme.RING,
+                                                theme.DARK_RING,
+                                            ]"
+                                            @click="
+                                                query = '';
+                                                used = false;
+                                                inUse = false;
+                                                notInUse = false;
+                                                notUsed = false;
+                                            "
+                                        >
+                                            Reset
+                                        </button>
+                                    </div>
                                 </div>
-                            </div>
+                            </TransitionChild>
                         </div>
                     </div>
+                </Dialog>
+            </TransitionRoot>
 
-                    <div class="mt-10 flex justify-center">
-                        <button
-                            type="button"
-                            class="
-                                inline-flex
-                                items-center
-                                px-4
-                                py-2
-                                border border-gray-300
-                                dark:border-gray-700
-                                rounded-md
-                                shadow-sm
-                                text-sm
-                                font-medium
-                                text-white
-                                bg-red-600
-                                hover:bg-red-700
-                                focus:outline-none focus:ring-2
-                                ring-red-600
-                            "
-                            @click="emit('logout')"
-                        >
-                            Logout
-                        </button>
+            <TransitionRoot appear :show="addModal" as="template">
+                <Dialog as="div" @close="addModal = false">
+                    <div
+                        class="fixed inset-0 z-10 overflow-y-auto bg-black bg-opacity-60"
+                    >
+                        <div class="min-h-screen px-4 text-center">
+                            <TransitionChild
+                                as="template"
+                                enter="duration-300 ease-out"
+                                enter-from="opacity-0"
+                                enter-to="opacity-100"
+                                leave="duration-200 ease-in"
+                                leave-from="opacity-100"
+                                leave-to="opacity-0"
+                            >
+                                <DialogOverlay class="fixed inset-0" />
+                            </TransitionChild>
+
+                            <span
+                                class="inline-block h-screen align-middle"
+                                aria-hidden="true"
+                            >
+                                &#8203;
+                            </span>
+
+                            <TransitionChild
+                                as="template"
+                                enter="duration-300 ease-out"
+                                enter-from="opacity-0 scale-95"
+                                enter-to="opacity-100 scale-100"
+                                leave="duration-200 ease-in"
+                                leave-from="opacity-100 scale-100"
+                                leave-to="opacity-0 scale-95"
+                            >
+                                <div
+                                    class="inline-block w-full max-w-lg p-6 my-8 overflow-visible text-left align-middle transition-all transform bg-white dark:bg-gray-900 shadow-xl rounded-lg"
+                                >
+                                    <DialogTitle
+                                        as="h3"
+                                        class="text-xl font-medium leading-6 text-gray-900 dark:text-gray-100 flex"
+                                    >
+                                        <span class="flex-1"> Add </span>
+                                        <span
+                                            class="hover:cursor-pointer"
+                                            @click="addModal = false"
+                                            v-html="feather.icons.x.toSvg()"
+                                        />
+                                    </DialogTitle>
+                                    <div
+                                        class="my-4 space-y-2 text-gray-500 dark:text-gray-400"
+                                    >
+                                        <div class="flex pt-1">
+                                            <input
+                                                v-model="addModalQuote.quote"
+                                                type="text"
+                                                class="w-full text-white p-2 bg-gray-100 dark:bg-gray-800 rounded-md focus:outline-none focus:ring-2 px-3"
+                                                :class="[
+                                                    theme.RING,
+                                                    theme.DARK_RING,
+                                                ]"
+                                                placeholder="Quote..."
+                                            />
+                                        </div>
+
+                                        <div class="pt-1">
+                                            <Combobox
+                                                v-model="addModalQuote.quotee"
+                                            >
+                                                <div class="w-full relative">
+                                                    <div
+                                                        class="w-full text-left bg-gray-100 dark:bg-gray-800 rounded-md shadow-md cursor-default focus:outline-none focus:ring-2"
+                                                        :class="[
+                                                            theme.RING,
+                                                            theme.DARK_RING,
+                                                        ]"
+                                                    >
+                                                        <ComboboxInput
+                                                            class="rounded-md w-full bg-gray-100 dark:bg-gray-800 border-none py-2 pl-3 pr-10 leading-5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2"
+                                                            :class="[
+                                                                theme.RING,
+                                                                theme.DARK_RING,
+                                                            ]"
+                                                            placeholder="Quotee..."
+                                                            @change="
+                                                                addModalQuote.quotee =
+                                                                    $event.target.value
+                                                            "
+                                                        />
+                                                    </div>
+                                                    <TransitionRoot
+                                                        leave="transition ease-in duration-100"
+                                                        leave-from="opacity-100"
+                                                        leave-to="opacity-0"
+                                                    >
+                                                        <ComboboxOptions
+                                                            class="absolute z-50 w-full py-1 mt-1 overflow-auto text-base bg-gray-100 dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black dark:text-white ring-opacity-5 focus:outline-none sm:text-sm"
+                                                        >
+                                                            <div
+                                                                v-if="
+                                                                    quoteeSearch.length ===
+                                                                        0 &&
+                                                                    addModalQuote.quotee !==
+                                                                        ''
+                                                                "
+                                                                class="cursor-default select-none relative py-2 px-4 text-gray-700 dark:text-gray-300"
+                                                            >
+                                                                No results
+                                                            </div>
+
+                                                            <ComboboxOption
+                                                                v-for="quotee in quoteeSearch"
+                                                                :key="quotee"
+                                                                v-slot="{
+                                                                    selected,
+                                                                    active,
+                                                                }"
+                                                                as="template"
+                                                                :value="quotee"
+                                                            >
+                                                                <li
+                                                                    class="cursor-default select-none relative py-2 px-4"
+                                                                    :class="[
+                                                                        active
+                                                                            ? `text-white ${theme.BG} ${theme.DARK_BG}`
+                                                                            : 'text-gray-900 dark:text-gray-100',
+
+                                                                        selected
+                                                                            ? 'ring-2 ring-pink-500'
+                                                                            : '',
+                                                                    ]"
+                                                                >
+                                                                    <span
+                                                                        class="block truncate"
+                                                                        :class="{
+                                                                            'font-medium':
+                                                                                selected,
+                                                                            'font-normal':
+                                                                                !selected,
+                                                                        }"
+                                                                        v-text="
+                                                                            quotee
+                                                                        "
+                                                                    />
+                                                                </li>
+                                                            </ComboboxOption>
+                                                        </ComboboxOptions>
+                                                    </TransitionRoot>
+                                                </div>
+                                            </Combobox>
+                                        </div>
+
+                                        <div class="pt-1">
+                                            <Combobox
+                                                v-model="addModalQuote.media"
+                                            >
+                                                <div class="w-full relative">
+                                                    <div
+                                                        class="w-full text-left bg-gray-100 dark:bg-gray-800 rounded-md shadow-md cursor-default focus:outline-none focus:ring-2"
+                                                        :class="[
+                                                            theme.RING,
+                                                            theme.DARK_RING,
+                                                        ]"
+                                                    >
+                                                        <ComboboxInput
+                                                            class="rounded-md w-full bg-gray-100 dark:bg-gray-800 border-none py-2 pl-3 pr-10 leading-5 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2"
+                                                            :class="[
+                                                                theme.RING,
+                                                                theme.DARK_RING,
+                                                            ]"
+                                                            placeholder="Media..."
+                                                            @change="
+                                                                addModalQuote.media =
+                                                                    $event.target.value
+                                                            "
+                                                        />
+                                                    </div>
+                                                    <TransitionRoot
+                                                        leave="transition ease-in duration-100"
+                                                        leave-from="opacity-100"
+                                                        leave-to="opacity-0"
+                                                    >
+                                                        <ComboboxOptions
+                                                            class="absolute z-50 w-full py-1 mt-1 overflow-auto text-base bg-gray-100 dark:bg-gray-800 rounded-md shadow-lg ring-1 ring-black dark:text-white ring-opacity-5 focus:outline-none sm:text-sm"
+                                                        >
+                                                            <div
+                                                                v-if="
+                                                                    mediaSearch.length ===
+                                                                        0 &&
+                                                                    addModalQuote.media !==
+                                                                        ''
+                                                                "
+                                                                class="cursor-default select-none relative py-2 px-4 text-gray-700 dark:text-gray-300"
+                                                            >
+                                                                No results
+                                                            </div>
+
+                                                            <ComboboxOption
+                                                                v-for="media in mediaSearch"
+                                                                :key="media"
+                                                                v-slot="{
+                                                                    selected,
+                                                                    active,
+                                                                }"
+                                                                as="template"
+                                                                :value="media"
+                                                            >
+                                                                <li
+                                                                    class="cursor-default select-none relative py-2 px-4"
+                                                                    :class="[
+                                                                        active
+                                                                            ? `text-white ${theme.BG} ${theme.DARK_BG}`
+                                                                            : 'text-gray-900 dark:text-gray-100',
+
+                                                                        selected
+                                                                            ? 'ring-2 ring-pink-500'
+                                                                            : '',
+                                                                    ]"
+                                                                >
+                                                                    <span
+                                                                        class="block truncate"
+                                                                        :class="{
+                                                                            'font-medium':
+                                                                                selected,
+                                                                            'font-normal':
+                                                                                !selected,
+                                                                        }"
+                                                                        v-text="
+                                                                            media
+                                                                        "
+                                                                    />
+                                                                </li>
+                                                            </ComboboxOption>
+                                                        </ComboboxOptions>
+                                                    </TransitionRoot>
+                                                </div>
+                                            </Combobox>
+                                        </div>
+                                    </div>
+
+                                    <div class="mt-4">
+                                        <button
+                                            v-if="
+                                                addModalQuote.quote.trim() !==
+                                                    '' &&
+                                                addModalQuote.quotee.trim() !==
+                                                    '' &&
+                                                addModalQuote.media.trim() !==
+                                                    ''
+                                            "
+                                            type="button"
+                                            class="w-full inline-flex justify-center px-4 py-2 text-sm text-white dark:text-black font-medium border border-transparent rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+                                            :class="[
+                                                theme.BG,
+                                                theme.DARK_BG,
+                                                theme.HOVER_BG,
+                                                theme.DARK_HOVER_BG,
+                                                theme.RING,
+                                                theme.DARK_RING,
+                                            ]"
+                                            @click="addQuoteAction"
+                                        >
+                                            Add Quote
+                                        </button>
+                                    </div>
+                                </div>
+                            </TransitionChild>
+                        </div>
                     </div>
-                </div>
-            </div>
-
-            <div
-                v-if="filterModal"
-                class="
-                    overflow-auto
-                    absolute
-                    inset-0
-                    z-10
-                    flex
-                    items-center
-                    justify-center
-                    bg-black bg-opacity-50
-                "
-            >
-                <div
-                    class="
-                        bg-gray-800 bg-opacity-90
-                        text-white
-                        w-11/12
-                        md:max-w-xl
-                        mx-auto
-                        rounded-lg
-                        shadow-lg
-                        py-4
-                        text-left
-                        px-6
-                    "
-                    v-click-away="filterModalClickAway"
-                >
-                    <div class="flex justify-between items-center pb-3">
-                        <p class="text-2xl font-bold">Filter</p>
-
-                        <div
-                            class="cursor-pointer z-50"
-                            @click="filterModal = false"
-                            v-html="feather.icons.x.toSvg()"
-                        />
-                    </div>
-
-                    <div class="mt-1 mb-2 space-y-4">
-                        <div class="flex pt-1">
-                            <input
-                                type="text"
-                                class="
-                                    w-full
-                                    text-white
-                                    p-2
-                                    bg-gray-900
-                                    rounded-md
-                                    focus:outline-none focus:ring-2
-                                "
-                                :class="[theme.RING, theme.DARK_RING]"
-                                placeholder="Query..."
-                                v-model="query"
-                            />
-                        </div>
-
-                        <div class="flex pt-1">
-                            <span class="flex-grow"> Used </span>
-                            <input
-                                type="checkbox"
-                                class="flew-grow-0 inline-block"
-                                v-model="used"
-                                :disabled="notUsed"
-                            />
-                        </div>
-
-                        <div class="flex pt-1">
-                            <span class="flex-grow"> In Use </span>
-                            <input
-                                type="checkbox"
-                                class="flew-grow-0 inline-block"
-                                v-model="inUse"
-                                :disabled="notInUse || notUsed"
-                            />
-                        </div>
-
-                        <div class="flex pt-1">
-                            <span class="flex-grow"> Not Used </span>
-                            <input
-                                type="checkbox"
-                                class="flew-grow-0 inline-block"
-                                v-model="notUsed"
-                                :disabled="used"
-                            />
-                        </div>
-
-                        <div class="flex pt-1">
-                            <span class="flex-grow"> Not In Use </span>
-                            <input
-                                type="checkbox"
-                                class="flew-grow-0 inline-block"
-                                v-model="notInUse"
-                                :disabled="inUse || used"
-                            />
-                        </div>
-
-                        <button
-                            type="button"
-                            class="
-                                w-full
-                                text-center
-                                justify-center
-                                inline-flex
-                                items-center
-                                px-4
-                                py-2
-                                border border-transparent
-                                rounded-md
-                                shadow-sm
-                                text-sm
-                                font-medium
-                                text-white
-                                focus:outline-none focus:ring-2
-                            "
-                            :class="[
-                                theme.BG,
-                                theme.DARK_BG,
-                                theme.HOVER_BG,
-                                theme.DARK_HOVER_BG,
-                                theme.RING,
-                                theme.DARK_RING,
-                            ]"
-                            @click="
-                                query = '';
-                                used = false;
-                                inUse = false;
-                                notInUse = false;
-                                notUsed = false;
-                            "
-                        >
-                            Reset
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div
-                v-if="addModal"
-                class="
-                    overflow-auto
-                    absolute
-                    inset-0
-                    z-10
-                    flex
-                    items-center
-                    justify-center
-                    bg-black bg-opacity-50
-                "
-            >
-                <div
-                    class="
-                        bg-gray-800 bg-opacity-90
-                        text-white
-                        w-11/12
-                        md:max-w-xl
-                        mx-auto
-                        rounded-lg
-                        shadow-lg
-                        py-4
-                        text-left
-                        px-6
-                    "
-                    v-click-away="addModalClickAway"
-                >
-                    <div class="flex justify-between items-center pb-3">
-                        <p class="text-2xl font-bold">Add</p>
-
-                        <div
-                            class="cursor-pointer z-50"
-                            @click="addModal = false"
-                            v-html="feather.icons.x.toSvg()"
-                        />
-                    </div>
-
-                    <div class="mt-1 mb-2 space-y-4">
-                        <div class="flex pt-1">
-                            <input
-                                type="text"
-                                class="
-                                    w-full
-                                    text-white
-                                    p-2
-                                    bg-gray-900
-                                    rounded-md
-                                    focus:outline-none focus:ring-2
-                                "
-                                :class="[theme.RING, theme.DARK_RING]"
-                                placeholder="Quote..."
-                                v-model="addModalQuote.quote"
-                            />
-                        </div>
-
-                        <div class="flex pt-1">
-                            <input
-                                type="text"
-                                class="
-                                    w-full
-                                    text-white
-                                    p-2
-                                    bg-gray-900
-                                    rounded-md
-                                    focus:outline-none focus:ring-2
-                                "
-                                :class="[theme.RING, theme.DARK_RING]"
-                                placeholder="Quotee..."
-                                v-model="addModalQuote.quotee"
-                            />
-                        </div>
-
-                        <div class="flex pt-1">
-                            <input
-                                type="text"
-                                class="
-                                    w-full
-                                    text-white
-                                    p-2
-                                    bg-gray-900
-                                    rounded-md
-                                    focus:outline-none focus:ring-2
-                                "
-                                :class="[theme.RING, theme.DARK_RING]"
-                                placeholder="Media..."
-                                v-model="addModalQuote.media"
-                            />
-                        </div>
-
-                        <button
-                            type="button"
-                            class="
-                                w-full
-                                text-center
-                                justify-center
-                                inline-flex
-                                items-center
-                                px-4
-                                py-2
-                                border border-transparent
-                                rounded-md
-                                shadow-sm
-                                text-sm
-                                font-medium
-                                text-white
-                                focus:outline-none focus:ring-2
-                            "
-                            :class="[
-                                theme.BG,
-                                theme.DARK_BG,
-                                theme.HOVER_BG,
-                                theme.DARK_HOVER_BG,
-                                theme.RING,
-                                theme.DARK_RING,
-                            ]"
-                            @click="addQuoteAction"
-                            v-if="
-                                addModalQuote.quote.trim() !== '' &&
-                                addModalQuote.quotee.trim() !== '' &&
-                                addModalQuote.media.trim() !== ''
-                            "
-                        >
-                            Add
-                        </button>
-                    </div>
-                </div>
-            </div>
+                </Dialog>
+            </TransitionRoot>
         </main>
     </div>
 </template>
