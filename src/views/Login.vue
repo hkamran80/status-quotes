@@ -1,27 +1,25 @@
 <script setup lang="ts">
-import { watch } from "@vue/runtime-core";
 import { useTitle } from "@vueuse/core";
-import { toRef } from "vue";
+import { useAuth0 } from "@auth0/auth0-vue";
 import { useRouter } from "vue-router";
-
-import { AuthStateModel } from "../utils/useAuth0";
 import { theme } from "../utils/theming";
-
-const { push } = useRouter();
-const emit = defineEmits<{ (e: "login"): void }>();
-const props = defineProps<{ authState: AuthStateModel }>();
+import { watch } from "vue";
 
 useTitle("Login | Status Quotes");
 
-if (props.authState.isAuthenticated) {
+const { loginWithPopup, isAuthenticated } = useAuth0();
+const login = () => loginWithPopup();
+
+const { push } = useRouter();
+if (isAuthenticated.value) {
     push({ name: "Quotes" });
 }
 
-const isAuthenticated = toRef(props.authState, "isAuthenticated");
-
-watch(isAuthenticated, (newVal) =>
-    newVal === true ? push({ name: "Quotes" }) : null,
-);
+watch(isAuthenticated, (newState) => {
+    if (newState === true) {
+        push({ name: "Quotes" });
+    }
+});
 </script>
 
 <template>
@@ -35,7 +33,7 @@ watch(isAuthenticated, (newVal) =>
 
             <button
                 type="button"
-                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2"
+                class="w-full flex justify-center py-2 px-4 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2 focus:ring-offset-2"
                 :class="[
                     theme.BG,
                     theme.DARK_BG,
@@ -44,13 +42,24 @@ watch(isAuthenticated, (newVal) =>
                     theme.RING,
                     theme.DARK_RING,
                 ]"
-                @click.prevent="emit('login')"
+                @click.prevent="login"
             >
                 Sign in
             </button>
         </div>
 
-        <div class="absolute bottom-7 left-7">
+        <div class="absolute bottom-7 left-7 flex flex-col">
+            <span
+                class="mt-2 text-grey-900 dark:text-gray-400 text-sm pr-6 select-none"
+            >
+                Copyright &copy; {{ new Date().getFullYear() }}
+                <a
+                    href="https://unisontech.org"
+                    target="_blank"
+                    class="underline"
+                    >UNISON Technologies, Inc</a
+                >. All rights reserved.
+            </span>
             <span
                 class="mt-2 text-grey-900 dark:text-gray-400 text-sm pr-6 select-none"
             >

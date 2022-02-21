@@ -1,15 +1,16 @@
 <script setup lang="ts">
 /* eslint-disable vue/no-v-html */
+
 import { onBeforeMount, ref } from "vue";
 import { computed } from "@vue/reactivity";
 import { useTitle, useToggle } from "@vueuse/core";
 import { useRouter } from "vue-router";
 import feather from "feather-icons";
 import useHotkey, { HotKey } from "vue3-hotkey";
-import { AuthStateModel } from "../utils/useAuth0";
 import { addQuote, getQuotes, switchInUseQuote } from "../utils/database";
 import { theme } from "../utils/theming";
 import { isDark } from "../composables/dark";
+import { useAuth0 } from "@auth0/auth0-vue";
 import type { Quote } from "../models/quotes";
 
 import QuoteCard from "../components/QuoteCard.vue";
@@ -26,21 +27,24 @@ import {
 } from "@headlessui/vue";
 
 const { push } = useRouter();
-const props = defineProps<{ authState: AuthStateModel }>();
-const emit = defineEmits<{ (e: "logout"): void }>();
+
+const { isAuthenticated, user, logout: auth0Logout } = useAuth0();
+const logout = () => {
+    auth0Logout({ returnTo: window.location.origin });
+};
+
+if (!isAuthenticated.value) {
+    push({ name: "Login" });
+}
 
 useTitle("Status Quotes");
 const toggleDark = useToggle(isDark);
 
-if (!props.authState.isAuthenticated) {
-    push({ name: "Login" });
-}
-
-const adminUser = props.authState.isAuthenticated
-    ? (import.meta.env.VITE_ADMIN_USERS as string)
-          .split(",")
-          .indexOf(props.authState.user.sub) !== -1
-    : false;
+const adminUser: boolean | undefined =
+    user.value &&
+    (import.meta.env.VITE_ADMIN_USERS as string)
+        .split(",")
+        .indexOf(user.value.sub) !== -1;
 
 const updateQuotes = async () => {
     try {
@@ -110,7 +114,7 @@ const addModalQuote = ref<Quote>({
     inUse: false,
 } as Quote);
 const addQuoteAction = async () => {
-    addQuote(addModalQuote.value);
+    await addQuote(addModalQuote.value);
     await updateQuotes();
 
     addModal.value = false;
@@ -198,6 +202,8 @@ const mediaSearch = computed(() =>
 );
 
 onBeforeMount(async () => await updateQuotes());
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+let _isDark = isDark;
 </script>
 
 <template>
@@ -279,6 +285,7 @@ onBeforeMount(async () => await updateQuotes());
                 </div>
             </div>
         </header>
+
         <main>
             <div class="mt-10 grid grid-cols-1 md:grid-cols-4 gap-6">
                 <QuoteCard
@@ -299,46 +306,52 @@ onBeforeMount(async () => await updateQuotes());
                 />
             </div>
 
-            <div class="mt-10 flex justify-center space-x-4">
-                <button
-                    type="button"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2"
-                    :class="[
-                        theme.BG,
-                        theme.DARK_BG,
-                        theme.HOVER_BG,
-                        theme.DARK_HOVER_BG,
-                        theme.RING,
-                        theme.DARK_RING,
-                    ]"
-                    @click="addModal = true"
-                >
-                    Add Quote
-                </button>
+            <div class="mt-10 space-y-4">
+                <div class="flex justify-center space-x-4">
+                    <button
+                        type="button"
+                        title="Add quote"
+                        class="rounded-lg text-gray-700 dark:text-gray-300 p-2 focus:outline-none focus:ring-2"
+                        :class="[theme.RING, theme.DARK_RING]"
+                        @click="addModal = true"
+                        v-html="feather.icons.plus.toSvg()"
+                    />
 
-                <button
-                    type="button"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-white focus:outline-none focus:ring-2"
-                    :class="[
-                        theme.BG,
-                        theme.DARK_BG,
-                        theme.HOVER_BG,
-                        theme.DARK_HOVER_BG,
-                        theme.RING,
-                        theme.DARK_RING,
-                    ]"
-                    @click="() => toggleDark()"
-                >
-                    Switch Theme
-                </button>
+                    <button
+                        type="button"
+                        title="Switch theme"
+                        class="rounded-lg text-gray-700 dark:text-gray-300 p-2 focus:outline-none focus:ring-2"
+                        :class="[theme.RING, theme.DARK_RING]"
+                        @click="() => toggleDark()"
+                        v-html="feather.icons[isDark ? 'moon' : 'sun'].toSvg()"
+                    />
 
-                <button
-                    type="button"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-md shadow-sm text-sm font-medium text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 ring-red-600"
-                    @click="emit('logout')"
-                >
-                    Logout
-                </button>
+                    <router-link
+                        to="/profile"
+                        title="Profile page"
+                        class="rounded-lg text-gray-700 dark:text-gray-300 p-2 focus:outline-none focus:ring-2"
+                        :class="[theme.RING, theme.DARK_RING]"
+                        v-html="feather.icons.user.toSvg()"
+                    />
+
+                    <button
+                        type="button"
+                        title="Logout"
+                        class="rounded-lg text-red-600 p-2 focus:outline-none focus:ring-2"
+                        @click="logout"
+                        v-html="feather.icons['log-out'].toSvg()"
+                    />
+                </div>
+
+                <p class="text-center text-sm text-gray-500 dark:text-gray-400">
+                    Copyright &copy; {{ new Date().getFullYear() }}
+                    <a
+                        href="https://unisontech.org"
+                        target="_blank"
+                        class="underline"
+                        >UNISON Technologies, Inc</a
+                    >. All rights reserved.
+                </p>
             </div>
 
             <TransitionRoot appear :show="filterModal" as="template">

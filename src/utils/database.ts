@@ -1,11 +1,12 @@
-import { Quote } from "../models/quotes";
+import type { HarperQuote, HarperRequest } from "../models/harperdb";
+import type { Quote } from "../models/quotes";
 
 const headers = new Headers();
 headers.append("Content-Type", "application/json");
 headers.append("Authorization", `Basic ${import.meta.env.VITE_HARPERDB_TOKEN}`);
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-async function harperRequest(body: any): Promise<any> {
+async function harperRequest(body: HarperRequest): Promise<any> {
     const response = await fetch(import.meta.env.VITE_HARPERDB_HOST as string, {
         method: "POST",
         headers,
@@ -21,8 +22,8 @@ async function harperRequest(body: any): Promise<any> {
     }
 }
 
-export function addQuote(quote: Quote): void {
-    harperRequest({
+export async function addQuote(quote: Quote): Promise<void> {
+    await harperRequest({
         operation: "insert",
         schema: import.meta.env.VITE_HARPERDB_SCHEMA as string,
         table: import.meta.env.VITE_HARPERDB_TABLE as string,
@@ -61,9 +62,4 @@ export function switchInUseQuote(quoteId: number, inUseQuoteId?: number) {
         table: import.meta.env.VITE_HARPERDB_TABLE as string,
         records,
     });
-}
-
-interface HarperQuote extends Quote {
-    __createdtime__?: string;
-    __updatedtime__?: string;
 }
