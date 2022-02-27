@@ -8,6 +8,7 @@ import { useAuth0 } from "@auth0/auth0-vue";
 import { useTitle, useToggle } from "@vueuse/core";
 import { isDark } from "../composables/dark";
 import feather from "feather-icons";
+import { checkAuthorization } from "../composables/checkAuthorization";
 
 import {
     TransitionRoot,
@@ -27,6 +28,9 @@ const logout = () => {
 if (!isAuthenticated.value) {
     push({ name: "Login" });
 }
+
+const { checkAuthorized } = checkAuthorization();
+checkAuthorized();
 
 useTitle("Profile | Status Quotes");
 const toggleDark = useToggle(isDark);

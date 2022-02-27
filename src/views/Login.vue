@@ -4,6 +4,7 @@ import { useAuth0 } from "@auth0/auth0-vue";
 import { useRouter } from "vue-router";
 import { theme } from "../utils/theming";
 import { watch } from "vue";
+import { checkAuthorization } from "../composables/checkAuthorization";
 
 useTitle("Login | Status Quotes");
 
@@ -11,12 +12,16 @@ const { loginWithPopup, isAuthenticated } = useAuth0();
 const login = () => loginWithPopup();
 
 const { push } = useRouter();
+const { checkAuthorized } = checkAuthorization();
+
 if (isAuthenticated.value) {
+    checkAuthorized();
     push({ name: "Quotes" });
 }
 
 watch(isAuthenticated, (newState) => {
     if (newState === true) {
+        checkAuthorized();
         push({ name: "Quotes" });
     }
 });

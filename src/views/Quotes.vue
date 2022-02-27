@@ -11,6 +11,7 @@ import { addQuote, getQuotes, switchInUseQuote } from "../utils/database";
 import { theme } from "../utils/theming";
 import { isDark } from "../composables/dark";
 import { useAuth0 } from "@auth0/auth0-vue";
+import { checkAuthorization } from "../composables/checkAuthorization";
 import type { Quote } from "../models/quotes";
 
 import QuoteCard from "../components/QuoteCard.vue";
@@ -28,7 +29,7 @@ import {
 
 const { push } = useRouter();
 
-const { isAuthenticated, user, logout: auth0Logout } = useAuth0();
+const { isAuthenticated, logout: auth0Logout } = useAuth0();
 const logout = () => {
     auth0Logout({ returnTo: window.location.origin });
 };
@@ -37,14 +38,13 @@ if (!isAuthenticated.value) {
     push({ name: "Login" });
 }
 
+const { checkAuthorized, isAdminUser } = checkAuthorization();
+
 useTitle("Status Quotes");
 const toggleDark = useToggle(isDark);
 
-const adminUser: boolean | undefined =
-    user.value &&
-    (import.meta.env.VITE_ADMIN_USERS as string)
-        .split(",")
-        .indexOf(user.value.sub) !== -1;
+checkAuthorized();
+const adminUser = isAdminUser();
 
 const updateQuotes = async () => {
     try {
