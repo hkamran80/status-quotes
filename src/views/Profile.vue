@@ -104,7 +104,7 @@ const resetPassword = async () => {
                     your email. Contact
                     <a
                         :href="`mailto:hkamran@hkamran.com?subject=Status%20Quotes%20-%20Verification%20Email&body=${encodeURIComponent(
-                            user.email,
+                            user.email as string,
                         )}`"
                         target="_blank"
                         class="underline"
