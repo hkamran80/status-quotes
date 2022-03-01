@@ -2,7 +2,7 @@
 /* eslint-disable vue/no-v-html */
 /* eslint-disable vue/multi-word-component-names */
 
-import { ref } from "vue";
+import { onBeforeMount, ref } from "vue";
 import { useRouter } from "vue-router";
 import { useAuth0 } from "@auth0/auth0-vue";
 import { useTitle, useToggle } from "@vueuse/core";
@@ -29,8 +29,10 @@ if (!isAuthenticated.value) {
     push({ name: "Login" });
 }
 
-const { checkAuthorized } = checkAuthorization();
-checkAuthorized();
+onBeforeMount(() => {
+    const { checkAuthorized } = checkAuthorization();
+    checkAuthorized();
+});
 
 useTitle("Profile | Status Quotes");
 const toggleDark = useToggle(isDark);

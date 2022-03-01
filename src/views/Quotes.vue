@@ -43,7 +43,9 @@ const { checkAuthorized, isAdminUser } = checkAuthorization();
 useTitle("Status Quotes");
 const toggleDark = useToggle(isDark);
 
-checkAuthorized();
+onBeforeMount(() => {
+    checkAuthorized();
+});
 const adminUser = isAdminUser();
 
 const updateQuotes = async () => {

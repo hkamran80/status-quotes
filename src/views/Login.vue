@@ -8,21 +8,27 @@ import { checkAuthorization } from "../composables/checkAuthorization";
 
 useTitle("Login | Status Quotes");
 
-const { loginWithPopup, isAuthenticated } = useAuth0();
+const { loginWithPopup, isAuthenticated, logout: auth0Logout } = useAuth0();
 const login = () => loginWithPopup();
 
 const { push } = useRouter();
 const { checkAuthorized } = checkAuthorization();
 
 if (isAuthenticated.value) {
-    checkAuthorized();
-    push({ name: "Quotes" });
+    if (!checkAuthorized(false)) {
+        push({ name: "Quotes" });
+    } else {
+        auth0Logout({ returnTo: window.location.origin });
+    }
 }
 
 watch(isAuthenticated, (newState) => {
     if (newState === true) {
-        checkAuthorized();
-        push({ name: "Quotes" });
+        if (!checkAuthorized(false)) {
+            push({ name: "Quotes" });
+        } else {
+            auth0Logout({ returnTo: window.location.origin });
+        }
     }
 });
 </script>
